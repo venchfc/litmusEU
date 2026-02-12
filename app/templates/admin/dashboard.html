@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="dashboard-section">
+  <div class="container">
+    <div class="dashboard-header">
+      <div>
+        <h2>Admin Dashboard</h2>
+        <p>Active event: {{ active_event.name }}</p>
+      </div>
+      <form method="post" action="{{ url_for('admin.close_event') }}">
+        <button class="btn btn-outline-light" type="submit">Close Event</button>
+      </form>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <h3>{{ stats.competitions }}</h3>
+        <p>Competitions</p>
+      </div>
+      <div class="stat-card">
+        <h3>{{ stats.judges }}</h3>
+        <p>Judges</p>
+      </div>
+      <div class="stat-card">
+        <h3>{{ stats.contestants }}</h3>
+        <p>Contestants</p>
+      </div>
+      <div class="stat-card">
+        <h3>{{ stats.criteria }}</h3>
+        <p>Criteria</p>
+      </div>
+      <div class="stat-card">
+        <h3>{{ stats.tabulators }}</h3>
+        <p>Tabulators</p>
+      </div>
+    </div>
+    <div class="dashboard-links">
+      <a class="btn btn-accent" href="{{ url_for('admin.competitions') }}">Manage Competitions</a>
+      <a class="btn btn-accent" href="{{ url_for('admin.judges') }}">Manage Judges</a>
+      <a class="btn btn-accent" href="{{ url_for('admin.contestants') }}">Manage Contestants</a>
+      <a class="btn btn-accent" href="{{ url_for('admin.criteria') }}">Manage Criteria</a>
+      <a class="btn btn-accent" href="{{ url_for('admin.accounts') }}">Manage Accounts</a>
+      <a class="btn btn-accent" href="{{ url_for('admin.results') }}">View Results</a>
+      <a class="btn btn-accent" href="{{ url_for('admin.history') }}">History</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

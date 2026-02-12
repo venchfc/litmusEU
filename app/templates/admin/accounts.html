@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="content-section">
+  <div class="container">
+    <h2>Manage Accounts</h2>
+    <div class="split-grid">
+      <div class="card-panel">
+        <form method="post">
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            {{ form.username.label(class="form-label") }}
+            {{ form.username(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.role.label(class="form-label") }}
+            {{ form.role(class="form-select", id="roleSelect") }}
+          </div>
+          <div class="mb-3">
+            {{ form.competition_id.label(class="form-label") }}
+            {{ form.competition_id(class="form-select", id="competitionSelect") }}
+            <small class="text-muted">Required for tabulator accounts only.</small>
+          </div>
+          {{ form.submit(class="btn btn-accent") }}
+        </form>
+      </div>
+      <div class="card-panel">
+        <ul class="list-group list-group-flush">
+          {% for user in users %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <strong>{{ user.username }}</strong> - {{ user.role|capitalize }}
+              {% if user.is_primary %}
+              <span class="badge bg-warning text-dark">Primary</span>
+              {% endif %}
+              {% if user.role == 'tabulator' and user.competition %}
+              <span class="badge bg-secondary">{{ user.competition.name }}</span>
+              {% endif %}
+            </div>
+            {% if not user.is_primary %}
+            <form method="post" action="{{ url_for('admin.delete_account', user_id=user.id) }}">
+              <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+            </form>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const roleSelect = document.getElementById("roleSelect");
+  const competitionSelect = document.getElementById("competitionSelect");
+
+  function toggleCompetition() {
+    const isTabulator = roleSelect.value === "tabulator";
+    competitionSelect.disabled = !isTabulator;
+  }
+
+  roleSelect.addEventListener("change", toggleCompetition);
+  toggleCompetition();
+</script>
+{% endblock %}

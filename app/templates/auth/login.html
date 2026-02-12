@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="form-section">
+  <div class="container">
+    <div class="form-card">
+      <h2>Account Login</h2>
+      <p>Admin and tabulators sign in to access their portal.</p>
+      <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          {{ form.username.label(class="form-label") }}
+          {{ form.username(class="form-control") }}
+        </div>
+        <div class="mb-3">
+          {{ form.password.label(class="form-label") }}
+          {{ form.password(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-accent w-100") }}
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

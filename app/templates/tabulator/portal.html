@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="content-section">
+  <div class="container">
+    <h2>Tabulator Portal</h2>
+    <p>Select a competition to enter scores.</p>
+    <div class="competition-cards">
+      {% for competition in competitions %}
+      <div class="competition-card">
+        <div class="card-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+        <h5>{{ competition.name }}</h5>
+        <a class="btn btn-outline-light" href="{{ url_for('tabulator.score_entry', competition_id=competition.id) }}">
+          Enter Scores
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

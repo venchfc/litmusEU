@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="content-section">
+  <div class="container">
+    <h2>Manage Competitions</h2>
+    <div class="split-grid">
+      <div class="card-panel">
+        <h5>Add Competition</h5>
+        <form method="post">
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.slug.label(class="form-label") }}
+            {{ form.slug(class="form-control") }}
+          </div>
+          {{ form.submit(class="btn btn-accent") }}
+        </form>
+      </div>
+      <div class="card-panel">
+        <h5>Existing Competitions</h5>
+        <ul class="list-group list-group-flush">
+          {% for competition in competitions %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ competition.name }}</span>
+            <form method="post" action="{{ url_for('admin.delete_competition', competition_id=competition.id) }}">
+              <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

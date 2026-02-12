@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-section">
+  <div class="container">
+    <div class="hero-content">
+      <div>
+        <p class="eyebrow">Welcome to</p>
+        <h1>LITMUS Scoring Tabulation System</h1>
+        <p class="lead">Manage competitions, input scores, and generate official results with confidence.</p>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-inner">
+          <h5>Competitions Portal</h5>
+          <p>Choose a competition to begin scoring.</p>
+          <a class="btn btn-accent" href="{{ url_for('auth.login') }}">Enter Admin or Tabulator</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="competition-section">
+  <div class="container">
+    <h2 class="section-title">Competition Portals</h2>
+    <div class="competition-cards">
+      {% for competition in competitions %}
+      <div class="competition-card">
+        <div class="card-icon"><i class="fa-solid fa-trophy"></i></div>
+        <h5>{{ competition.name }}</h5>
+        <p>Official portal for {{ competition.name }}.</p>
+        <a class="btn btn-outline-light" href="{{ url_for('tabulator.score_entry', competition_id=competition.id) }}">
+          Open Portal
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

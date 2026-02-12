@@ -1,0 +1,235 @@
+:root {
+  --litmus-white: #ffffff;
+  --litmus-maroon: #6e0d25;
+  --litmus-maroon-dark: #4c0819;
+  --litmus-orange: #f28c28;
+  --litmus-gray: #f7f4f2;
+}
+
+body {
+  font-family: "Montserrat", sans-serif;
+  color: #1e1b1b;
+  background: linear-gradient(135deg, #ffffff 0%, #f7f4f2 60%, #fbe3cc 100%);
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: "Libre Baskerville", serif;
+}
+
+.site-header {
+  background: var(--litmus-maroon);
+  color: var(--litmus-white);
+}
+
+.navbar-brand, .nav-link {
+  color: var(--litmus-white) !important;
+  font-weight: 600;
+}
+
+.navbar-nav {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.navbar-brand {
+  letter-spacing: 1px;
+  margin-right: 18px;
+}
+
+.navbar {
+  padding: 0.6rem 0;
+}
+
+.dropdown-menu {
+  background: var(--litmus-maroon-dark);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dropdown-item {
+  color: var(--litmus-white);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--litmus-white);
+}
+
+.navbar-nav .dropdown {
+  position: relative;
+}
+
+.navbar-nav .dropdown-menu {
+  left: 0;
+  right: auto;
+  margin-top: 0.4rem;
+}
+
+.page-wrapper {
+  padding-bottom: 60px;
+}
+
+.hero-section {
+  padding: 80px 0 40px;
+  background: linear-gradient(135deg, var(--litmus-maroon) 0%, var(--litmus-maroon-dark) 70%);
+  color: var(--litmus-white);
+}
+
+.hero-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  align-items: center;
+}
+
+.hero-card {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 24px;
+  backdrop-filter: blur(6px);
+}
+
+.hero-card-inner {
+  background: var(--litmus-white);
+  color: #1e1b1b;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  font-size: 12px;
+  color: var(--litmus-orange);
+  margin-bottom: 8px;
+}
+
+.competition-section {
+  padding: 50px 0 80px;
+}
+
+.section-title {
+  margin-bottom: 24px;
+}
+
+.competition-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.competition-card {
+  background: var(--litmus-maroon);
+  color: var(--litmus-white);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.card-icon {
+  font-size: 28px;
+  color: var(--litmus-orange);
+  margin-bottom: 12px;
+}
+
+.btn-accent {
+  background: var(--litmus-orange);
+  border: none;
+  color: #1e1b1b;
+  font-weight: 600;
+}
+
+.btn-accent:hover {
+  background: #ff9f40;
+  color: #1e1b1b;
+}
+
+.form-section {
+  padding: 60px 0;
+}
+
+.form-card {
+  max-width: 420px;
+  margin: 0 auto;
+  background: var(--litmus-white);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.content-section {
+  padding: 40px 0;
+}
+
+.dashboard-section {
+  padding-top: 24px;
+}
+
+.card-panel {
+  background: var(--litmus-white);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+}
+
+.split-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.stat-card {
+  background: var(--litmus-white);
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  border-left: 6px solid var(--litmus-orange);
+}
+
+.dashboard-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.dashboard-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.table-dark {
+  --bs-table-bg: var(--litmus-maroon-dark);
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.08);
+  --bs-table-color: var(--litmus-white);
+}
