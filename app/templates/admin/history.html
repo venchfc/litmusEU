@@ -6,16 +6,16 @@
     <h2>Event History</h2>
     <div class="card-panel">
       <ul class="list-group list-group-flush">
-        {% for event in events %}
+        {% for item in completed_competitions %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
           <div>
-            <strong>{{ event.name }}</strong>
-            <p class="mb-0 text-muted">Completed {{ event.completed_at }}</p>
+            <strong>{{ item.competition.name }}</strong>
+            <p class="mb-0 text-muted">{{ item.event.name }} - Event done</p>
           </div>
-          <a class="btn btn-outline-light btn-sm" href="{{ url_for('admin.results', event_id=event.id) }}">View Results</a>
+          <a class="btn btn-accent btn-sm" href="{{ url_for('admin.results', event_id=item.event.id, competition_id=item.competition.id) }}">View Results</a>
         </li>
         {% else %}
-        <li class="list-group-item">No completed events yet.</li>
+        <li class="list-group-item">No completed competitions yet.</li>
         {% endfor %}
       </ul>
     </div>

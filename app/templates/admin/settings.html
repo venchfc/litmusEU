@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="content-section">
+  <div class="container">
+    <h2>Admin Settings</h2>
+    <div class="card-panel mb-4">
+      <h5>Change Password</h5>
+      <p class="text-muted">Use a strong password with at least 8 characters.</p>
+      <form method="post">
+        {{ password_form.hidden_tag() }}
+        <div class="mb-3">
+          {{ password_form.current_password.label(class="form-label") }}
+          {{ password_form.current_password(class="form-control", type="password") }}
+        </div>
+        <div class="mb-3">
+          {{ password_form.new_password.label(class="form-label") }}
+          {{ password_form.new_password(class="form-control", type="password") }}
+        </div>
+        <div class="mb-3">
+          {{ password_form.confirm_password.label(class="form-label") }}
+          {{ password_form.confirm_password(class="form-control", type="password") }}
+        </div>
+        {{ password_form.submit(class="btn btn-accent") }}
+      </form>
+    </div>
+    <div class="card-panel">
+      <h5>Reset Database</h5>
+      <p class="text-muted">
+        This will delete all competitions, judges, contestants, criteria, scores, events, and
+        non-primary accounts. The primary admin account will remain.
+      </p>
+      <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#resetDatabaseModal">
+        Reset Database
+      </button>
+    </div>
+  </div>
+</section>
+
+<div class="modal fade" id="resetDatabaseModal" tabindex="-1" aria-labelledby="resetDatabaseLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post">
+        {{ reset_form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title" id="resetDatabaseLabel">Confirm Reset</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">
+            Enter your password to confirm. This action cannot be undone.
+          </p>
+          <div class="mb-3">
+            {{ reset_form.password.label(class="form-label") }}
+            {{ reset_form.password(class="form-control", type="password") }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+          {{ reset_form.reset_submit(class="btn btn-outline-danger") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

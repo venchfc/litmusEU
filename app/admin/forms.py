@@ -24,7 +24,7 @@ class ContestantForm(FlaskForm):
 class CriteriaForm(FlaskForm):
     name = StringField("Criteria Name", validators=[DataRequired()])
     max_score = FloatField("Max Score", validators=[DataRequired(), NumberRange(min=0.1)])
-    weight = FloatField("Weight", validators=[DataRequired(), NumberRange(min=0.1)])
+    weight = FloatField("Weight (%)", validators=[DataRequired(), NumberRange(min=0.1)])
     competition_id = SelectField("Competition", coerce=int)
     submit = SubmitField("Add Criteria")
 
@@ -51,3 +51,8 @@ class ChangePasswordForm(FlaskForm):
         ],
     )
     submit = SubmitField("Update Password")
+
+
+class ResetDatabaseForm(FlaskForm):
+    password = PasswordField("Confirm Password", validators=[DataRequired()])
+    reset_submit = SubmitField("Reset Database")

@@ -37,11 +37,14 @@
             </option>
             {% endfor %}
           </select>
+          <small class="text-muted d-block mt-2">
+            Current total: {{ "%.1f"|format(current_weight_total) }}% | Remaining: {{ "%.1f"|format(100 - current_weight_total) }}%
+          </small>
         </form>
         <ul class="list-group list-group-flush">
           {% for item in criteria %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ item.name }} (Max {{ item.max_score }}, Weight {{ item.weight }})</span>
+            <span>{{ item.name }} (Max {{ item.max_score }}, Weight {{ item.weight }}%)</span>
             <form method="post" action="{{ url_for('admin.delete_criteria', criteria_id=item.id) }}">
               <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
             </form>

@@ -36,7 +36,8 @@ def portal():
 @role_required("tabulator")
 def score_entry(competition_id):
     if current_user.competition_id and current_user.competition_id != competition_id:
-        raise Forbidden("You are not assigned to this competition portal.")
+        flash("You are not assigned to this competition portal.", "warning")
+        return redirect(url_for("tabulator.portal"))
     competition = Competition.query.get_or_404(competition_id)
     judges = Judge.query.filter_by(competition_id=competition_id).order_by(Judge.name).all()
     contestants = (
@@ -70,6 +71,7 @@ def score_entry(competition_id):
 
     active_event = _get_active_event()
     existing_scores = {}
+    form_locked = False
 
     if form.validate_on_submit():
         judge_id = form.judge_id.data
@@ -79,7 +81,6 @@ def score_entry(competition_id):
             Score.query.filter_by(
                 event_id=active_event.id,
                 competition_id=competition_id,
-                judge_id=judge_id,
                 contestant_id=contestant_id,
                 locked=True,
             ).count()
@@ -116,8 +117,33 @@ def score_entry(competition_id):
             else:
                 score_entry.score = score_value
 
-            if form.submit_lock.data:
-                score_entry.locked = True
+        if form.submit_lock.data:
+            expected_scores = len(judges) * len(criteria_items)
+            saved_scores = Score.query.filter_by(
+                event_id=active_event.id,
+                competition_id=competition_id,
+                contestant_id=contestant_id,
+            ).count()
+            if saved_scores < expected_scores:
+                db.session.commit()
+                flash(
+                    "Cannot lock yet. Ensure all judges have saved scores for every criteria.",
+                    "warning",
+                )
+                return redirect(
+                    url_for(
+                        "tabulator.score_entry",
+                        competition_id=competition_id,
+                        judge_id=judge_id,
+                        contestant_id=contestant_id,
+                    )
+                )
+
+            Score.query.filter_by(
+                event_id=active_event.id,
+                competition_id=competition_id,
+                contestant_id=contestant_id,
+            ).update({"locked": True})
 
         db.session.commit()
         flash("Scores saved." if form.submit_save.data else "Scores locked.", "success")
@@ -130,22 +156,28 @@ def score_entry(competition_id):
             )
         )
 
-    judge_id = request.args.get("judge_id", type=int)
-    contestant_id = request.args.get("contestant_id", type=int)
-    if judge_id and contestant_id:
-        form.judge_id.data = judge_id
-        form.contestant_id.data = contestant_id
+    selected_judge_id = request.args.get("judge_id", type=int)
+    selected_contestant_id = request.args.get("contestant_id", type=int)
+    if not selected_judge_id and judges:
+        selected_judge_id = judges[0].id
+    if not selected_contestant_id and contestants:
+        selected_contestant_id = contestants[0].id
+    if selected_judge_id and selected_contestant_id:
+        form.judge_id.data = selected_judge_id
+        form.contestant_id.data = selected_contestant_id
         for criteria_item in criteria_items:
             score_entry = Score.query.filter_by(
                 event_id=active_event.id,
                 competition_id=competition_id,
-                judge_id=judge_id,
-                contestant_id=contestant_id,
+                judge_id=selected_judge_id,
+                contestant_id=selected_contestant_id,
                 criteria_id=criteria_item.id,
             ).first()
             existing_scores[criteria_item.id] = score_entry
             if score_entry:
                 getattr(form, f"criteria_{criteria_item.id}").data = score_entry.score
+                if score_entry.locked:
+                    form_locked = True
 
     return render_template(
         "tabulator/score_entry.html",
@@ -155,4 +187,5 @@ def score_entry(competition_id):
         judges=judges,
         contestants=contestants,
         existing_scores=existing_scores,
+        form_locked=form_locked,
     )

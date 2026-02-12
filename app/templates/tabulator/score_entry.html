@@ -9,8 +9,12 @@
     {% if not judges or not contestants or not criteria %}
       <div class="alert alert-warning">Please ensure judges, contestants, and criteria are configured for this competition.</div>
     {% else %}
-      <form method="post" class="card-panel">
+      <form method="post">
         {{ form.hidden_tag() }}
+        <div class="mb-3 d-flex justify-content-end">
+          {{ form.submit_lock(class="btn btn-outline-danger", disabled=form_locked) }}
+        </div>
+        <div class="card-panel">
         <div class="row">
           <div class="col-md-6 mb-3">
             {{ form.judge_id.label(class="form-label") }}
@@ -25,18 +29,42 @@
           {% for item in criteria %}
           <div>
             <label class="form-label">{{ item.name }} (max {{ item.max_score }})</label>
-            {{ getattr(form, 'criteria_' ~ item.id)(class="form-control") }}
+            {{ form['criteria_' ~ item.id](class="form-control", disabled=form_locked) }}
             {% if existing_scores.get(item.id) and existing_scores.get(item.id).locked %}
               <small class="text-warning">Locked</small>
             {% endif %}
           </div>
           {% endfor %}
         </div>
+        {% if not existing_scores %}
+          <p class="text-muted mt-3">No saved scores for this judge and contestant yet.</p>
+        {% endif %}
         <div class="mt-3 d-flex gap-2">
-          {{ form.submit_save(class="btn btn-accent") }}
-          {{ form.submit_lock(class="btn btn-outline-danger") }}
+          {{ form.submit_save(class="btn btn-accent", disabled=form_locked) }}
+        </div>
         </div>
       </form>
+      <script>
+        const judgeSelect = document.getElementById("judge_id");
+        const contestantSelect = document.getElementById("contestant_id");
+        const baseUrl = "{{ url_for('tabulator.score_entry', competition_id=competition.id) }}";
+
+        function updateSelection() {
+          if (!judgeSelect || !contestantSelect) {
+            return;
+          }
+          const judgeId = judgeSelect.value;
+          const contestantId = contestantSelect.value;
+          if (judgeId && contestantId) {
+            window.location = `${baseUrl}?judge_id=${judgeId}&contestant_id=${contestantId}`;
+          }
+        }
+
+        if (judgeSelect && contestantSelect) {
+          judgeSelect.addEventListener("change", updateSelection);
+          contestantSelect.addEventListener("change", updateSelection);
+        }
+      </script>
     {% endif %}
   </div>
 </section>

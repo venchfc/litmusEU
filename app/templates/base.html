@@ -15,14 +15,14 @@
   <header class="site-header">
     <nav class="navbar navbar-expand-lg navbar-dark">
       <div class="container">
-        <a class="navbar-brand" href="{{ url_for('main.home') }}">LITMUS</a>
+        <a class="navbar-brand" href="{% if current_user.is_authenticated and current_user.role == 'admin' %}{{ url_for('admin.dashboard') }}{% elif current_user.is_authenticated and current_user.role == 'tabulator' %}{{ url_for('tabulator.portal') }}{% else %}{{ url_for('main.home') }}{% endif %}">LITMUS</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#litmusNav">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="litmusNav">
           <ul class="navbar-nav ms-auto align-items-lg-center">
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('main.home') }}">Home</a>
+              <a class="nav-link" href="{% if current_user.is_authenticated and current_user.role == 'admin' %}{{ url_for('admin.dashboard') }}{% elif current_user.is_authenticated and current_user.role == 'tabulator' %}{{ url_for('tabulator.portal') }}{% else %}{{ url_for('main.home') }}{% endif %}">Home</a>
             </li>
             {% if current_user.is_authenticated and current_user.role == 'admin' %}
             <li class="nav-item dropdown">
@@ -43,6 +43,9 @@
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('admin.history') }}">History</a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('admin.settings') }}">Settings</a>
+            </li>
             {% endif %}
             {% if not current_user.is_authenticated %}
             <li class="nav-item">
@@ -50,9 +53,6 @@
             </li>
             {% endif %}
             {% if current_user.is_authenticated %}
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('admin.change_password') }}">Change Password</a>
-            </li>
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
             </li>

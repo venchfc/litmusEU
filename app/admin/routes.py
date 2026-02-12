@@ -11,6 +11,7 @@ from .forms import (
     ContestantForm,
     CriteriaForm,
     JudgeForm,
+    ResetDatabaseForm,
 )
 from ..extensions import db
 from ..models import Competition, Contestant, Criteria, Event, Judge, Score, User
@@ -180,6 +181,14 @@ def criteria():
     form.competition_id.choices = [(c.id, c.name) for c in competitions_list]
 
     if form.validate_on_submit():
+        existing_total = (
+            db.session.query(db.func.coalesce(db.func.sum(Criteria.weight), 0.0))
+            .filter(Criteria.competition_id == form.competition_id.data)
+            .scalar()
+        )
+        if existing_total + form.weight.data > 100.0:
+            flash("Total criteria weight cannot exceed 100%.", "warning")
+            return redirect(url_for("admin.criteria", competition_id=form.competition_id.data))
         db.session.add(
             Criteria(
                 name=form.name.data.strip(),
@@ -201,12 +210,20 @@ def criteria():
         if competition_id
         else []
     )
+    current_weight_total = (
+        db.session.query(db.func.coalesce(db.func.sum(Criteria.weight), 0.0))
+        .filter(Criteria.competition_id == competition_id)
+        .scalar()
+        if competition_id
+        else 0.0
+    )
     return render_template(
         "admin/criteria.html",
         form=form,
         competitions=competitions_list,
         criteria=criteria_list,
         selected_competition=competition_id,
+        current_weight_total=current_weight_total,
     )
 
 
@@ -308,9 +325,49 @@ def results():
         competition_id = competitions_list[0].id
 
     competition = Competition.query.get(competition_id) if competition_id else None
+    criteria_items = []
     results_rows = []
+    judge_breakdown = []
     if competition:
+        criteria_items = Criteria.query.filter_by(competition_id=competition.id).order_by(Criteria.name).all()
         results_rows = _calculate_results(event.id, competition.id)
+        judges = Judge.query.filter_by(competition_id=competition.id).order_by(Judge.name).all()
+        contestants = (
+            Contestant.query.filter_by(competition_id=competition.id)
+            .order_by(Contestant.name)
+            .all()
+        )
+        scores = Score.query.filter_by(
+            event_id=event.id,
+            competition_id=competition.id,
+        ).all()
+
+        score_lookup = {}
+        for score in scores:
+            score_lookup[(score.judge_id, score.contestant_id, score.criteria_id)] = score.score
+
+        for judge in judges:
+            rows = []
+            for contestant in contestants:
+                criteria_scores = {}
+                total_weighted = 0.0
+                for criteria_item in criteria_items:
+                    raw_score = score_lookup.get(
+                        (judge.id, contestant.id, criteria_item.id)
+                    )
+                    criteria_scores[criteria_item.id] = raw_score
+                    if raw_score is not None and criteria_item.max_score:
+                        total_weighted += (
+                            raw_score / criteria_item.max_score
+                        ) * criteria_item.weight
+                rows.append(
+                    {
+                        "contestant": contestant.name,
+                        "criteria_scores": criteria_scores,
+                        "total": min(total_weighted, 100.0),
+                    }
+                )
+            judge_breakdown.append({"judge": judge, "rows": rows})
 
     events = Event.query.order_by(Event.created_at.desc()).all()
     return render_template(
@@ -320,6 +377,8 @@ def results():
         event=event,
         competition=competition,
         results=results_rows,
+        criteria_items=criteria_items,
+        judge_breakdown=judge_breakdown,
     )
 
 
@@ -332,8 +391,9 @@ def results_pdf():
     event = Event.query.get_or_404(event_id)
     competition = Competition.query.get_or_404(competition_id)
     results_rows = _calculate_results(event.id, competition.id)
+    criteria_items = Criteria.query.filter_by(competition_id=competition.id).order_by(Criteria.name).all()
 
-    pdf_bytes = render_results_pdf(event, competition, results_rows)
+    pdf_bytes = render_results_pdf(event, competition, results_rows, criteria_items)
     filename = f"results_{competition.slug}_{event.id}.pdf"
     return Response(
         pdf_bytes,
@@ -346,8 +406,85 @@ def results_pdf():
 @login_required
 @role_required("admin")
 def history():
-    events = Event.query.filter_by(status="completed").order_by(Event.completed_at.desc()).all()
-    return render_template("admin/history.html", events=events)
+    events = Event.query.order_by(Event.created_at.desc()).all()
+    competitions = Competition.query.order_by(Competition.name).all()
+
+    completed_competitions = []
+    for event in events:
+        for competition in competitions:
+            judges_count = Judge.query.filter_by(competition_id=competition.id).count()
+            contestants_count = Contestant.query.filter_by(competition_id=competition.id).count()
+            criteria_count = Criteria.query.filter_by(competition_id=competition.id).count()
+            expected_scores = judges_count * contestants_count * criteria_count
+            if expected_scores == 0:
+                continue
+            locked_scores = Score.query.filter_by(
+                event_id=event.id,
+                competition_id=competition.id,
+                locked=True,
+            ).count()
+            if locked_scores == expected_scores:
+                completed_competitions.append(
+                    {
+                        "event": event,
+                        "competition": competition,
+                        "expected_scores": expected_scores,
+                    }
+                )
+
+    return render_template(
+        "admin/history.html",
+        completed_competitions=completed_competitions,
+    )
+
+
+@admin_bp.route("/settings", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def settings():
+    reset_form = ResetDatabaseForm(prefix="reset")
+    password_form = ChangePasswordForm(prefix="pw")
+
+    if request.method == "POST":
+        if "reset-reset_submit" in request.form:
+            if reset_form.validate_on_submit():
+                if not current_user.check_password(reset_form.password.data):
+                    flash("Password is incorrect.", "danger")
+                    return redirect(url_for("admin.settings"))
+                if not current_user.is_primary:
+                    flash("Only the primary admin can reset the database.", "danger")
+                    return redirect(url_for("admin.settings"))
+
+                db.session.query(Score).delete(synchronize_session=False)
+                db.session.query(Criteria).delete(synchronize_session=False)
+                db.session.query(Contestant).delete(synchronize_session=False)
+                db.session.query(Judge).delete(synchronize_session=False)
+                db.session.query(Competition).delete(synchronize_session=False)
+                db.session.query(Event).delete(synchronize_session=False)
+                db.session.query(User).filter(User.is_primary.is_(False)).delete(
+                    synchronize_session=False
+                )
+                db.session.commit()
+
+                _get_active_event()
+                flash("Database reset completed.", "success")
+                return redirect(url_for("admin.settings"))
+        elif "pw-submit" in request.form:
+            if password_form.validate_on_submit():
+                if not current_user.check_password(password_form.current_password.data):
+                    flash("Current password is incorrect.", "danger")
+                    return redirect(url_for("admin.settings"))
+
+                current_user.set_password(password_form.new_password.data)
+                db.session.commit()
+                flash("Password updated successfully.", "success")
+                return redirect(url_for("admin.settings"))
+
+    return render_template(
+        "admin/settings.html",
+        reset_form=reset_form,
+        password_form=password_form,
+    )
 
 
 @admin_bp.route("/event/close", methods=["POST"])
@@ -369,11 +506,14 @@ def close_event():
 
 def _calculate_results(event_id, competition_id):
     contestants = Contestant.query.filter_by(competition_id=competition_id).all()
-    criteria_items = Criteria.query.filter_by(competition_id=competition_id).all()
+    criteria_items = Criteria.query.filter_by(competition_id=competition_id).order_by(Criteria.name).all()
 
     results = []
     for contestant in contestants:
-        total = 0.0
+        total_weighted = 0.0
+        total_raw = 0.0
+        criteria_weighted_totals = {}
+        criteria_raw_totals = {}
         for criteria_item in criteria_items:
             scores = (
                 Score.query.filter_by(
@@ -383,9 +523,28 @@ def _calculate_results(event_id, competition_id):
                     criteria_id=criteria_item.id,
                 ).all()
             )
-            for score in scores:
-                total += score.score * criteria_item.weight
-        results.append({"contestant": contestant.name, "total": total})
+            scores_sum = sum(score.score for score in scores)
+            score_count = len(scores)
+            avg_raw = scores_sum / score_count if score_count else 0.0
+            weighted_total = (
+                (avg_raw / criteria_item.max_score) * criteria_item.weight
+                if criteria_item.max_score
+                else 0.0
+            )
+            criteria_raw_totals[criteria_item.id] = avg_raw
+            criteria_weighted_totals[criteria_item.id] = weighted_total
+            total_raw += avg_raw
+            total_weighted += weighted_total
+        total_weighted = min(total_weighted, 100.0)
+        results.append(
+            {
+                "contestant": contestant.name,
+                "total": total_weighted,
+                "total_raw": total_raw,
+                "criteria_totals": criteria_weighted_totals,
+                "criteria_raw_totals": criteria_raw_totals,
+            }
+        )
 
     results.sort(key=lambda row: row["total"], reverse=True)
     return results

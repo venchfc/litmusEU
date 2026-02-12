@@ -21,14 +21,12 @@
           {% endfor %}
         </select>
       </div>
-      <div class="align-self-end">
+      <div class="align-self-end d-flex gap-2">
         <button class="btn btn-accent" type="submit">Filter</button>
+        {% if competition %}
+        <a class="btn btn-accent" href="{{ url_for('admin.results_pdf', event_id=event.id, competition_id=competition.id) }}">Download PDF</a>
+        {% endif %}
       </div>
-      {% if competition %}
-      <div class="align-self-end">
-        <a class="btn btn-outline-light" href="{{ url_for('admin.results_pdf', event_id=event.id, competition_id=competition.id) }}">Download PDF</a>
-      </div>
-      {% endif %}
     </form>
 
     <div class="card-panel">
@@ -38,6 +36,9 @@
           <tr>
             <th>Rank</th>
             <th>Contestant</th>
+            {% for item in criteria_items %}
+            <th>{{ item.name }} ({{ "%.0f"|format(item.weight) }}%)</th>
+            {% endfor %}
             <th>Total</th>
           </tr>
         </thead>
@@ -46,16 +47,57 @@
           <tr>
             <td>{{ loop.index }}</td>
             <td>{{ row.contestant }}</td>
-            <td>{{ "%.2f"|format(row.total) }}</td>
+            {% for item in criteria_items %}
+            <td>
+              {{ "%.4f"|format(row.criteria_totals.get(item.id, 0)) }}
+              ({{ "%.4f"|format(row.criteria_raw_totals.get(item.id, 0)) }})
+            </td>
+            {% endfor %}
+            <td>{{ "%.4f"|format(row.total) }}</td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="3">No results yet.</td>
+            <td colspan="{{ 3 + criteria_items|length }}">No results yet.</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    {% if judge_breakdown %}
+    <div class="mt-4">
+      <h4>Judge Score Breakdown</h4>
+      {% for block in judge_breakdown %}
+      <div class="card-panel">
+        <h5>{{ block.judge.name }}</h5>
+        <table class="table table-dark table-striped">
+          <thead>
+            <tr>
+              <th>Contestant</th>
+              {% for item in criteria_items %}
+              <th>{{ item.name }}</th>
+              {% endfor %}
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in block.rows %}
+            <tr>
+              <td>{{ row.contestant }}</td>
+              {% for item in criteria_items %}
+              <td>
+                {% set raw_score = row.criteria_scores.get(item.id) %}
+                {{ "%.4f"|format(raw_score) if raw_score is not none else "-" }}
+              </td>
+              {% endfor %}
+              <td>{{ "%.4f"|format(row.total) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
