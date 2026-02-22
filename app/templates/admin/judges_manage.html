@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="content-section manage-section">
+  <div class="container">
+    <div class="section-heading">
+      <h2>Manage Judges</h2>
+    </div>
+    <div class="manage-card">
+      <div class="manage-card-header">
+        <div>
+          <h5>Judges for {{ competition.name }}</h5>
+          <p class="manage-subtext">Add or remove judges for this competition.</p>
+        </div>
+        <a class="btn btn-sm btn-manage" href="{{ url_for('admin.judges') }}">
+          <i class="fa-solid fa-arrow-left"></i>
+          Back to competitions
+        </a>
+      </div>
+      <div class="split-grid manage-grid">
+        <div class="manage-card-body">
+          <form method="post">
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="competition_id" value="{{ competition.id }}">
+            <div class="mb-3">
+              {{ form.name.label(class="form-label") }}
+              {{ form.name(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.username.label(class="form-label") }}
+              {{ form.username(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.password.label(class="form-label") }}
+              {{ form.password(class="form-control") }}
+            </div>
+            {{ form.submit(class="btn btn-accent manage-btn") }}
+          </form>
+          <hr>
+          <form method="post">
+            {{ assign_form.hidden_tag() }}
+            <input type="hidden" name="competition_id" value="{{ competition.id }}">
+            <div class="mb-3">
+              {{ assign_form.judge_id.label(class="form-label") }}
+              {{ assign_form.judge_id(class="form-select") }}
+            </div>
+            {{ assign_form.submit(class="btn btn-outline-secondary") }}
+          </form>
+        </div>
+        <div class="manage-card-body">
+          <div class="manage-list manage-list-tight">
+            {% for judge in judges %}
+            <div class="manage-row">
+              <div class="manage-row-title">
+                {{ judge.name }}
+                {% if judge_users.get(judge.id) %}
+                <span class="text-muted">({{ judge_users.get(judge.id).username }})</span>
+                {% endif %}
+              </div>
+              <div class="manage-actions">
+                <form method="post" action="{{ url_for('admin.delete_judge', judge_id=judge.id) }}">
+                  <input type="hidden" name="competition_id" value="{{ competition.id }}">
+                  <button class="btn btn-outline-danger btn-sm" type="submit">
+                    <i class="fa-solid fa-trash"></i>
+                    Remove
+                  </button>
+                </form>
+              </div>
+            </div>
+            {% else %}
+            <div class="manage-empty">No judges yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

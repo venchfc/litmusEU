@@ -26,6 +26,7 @@
           <a class="btn btn-accent" href="{{ url_for('admin.contestants') }}">Contestants</a>
           <a class="btn btn-accent" href="{{ url_for('admin.criteria') }}">Criteria</a>
           <a class="btn btn-accent" href="{{ url_for('admin.accounts') }}">Accounts</a>
+          <a class="btn btn-accent" href="{{ url_for('admin.scoring') }}">Scoring</a>
           <a class="btn btn-accent" href="{{ url_for('admin.history') }}">History</a>
         </div>
       </div>
@@ -51,8 +52,8 @@
             <p>Criteria</p>
           </div>
           <div class="stat-card">
-            <h3>{{ stats.tabulators }}</h3>
-            <p>Tabulators</p>
+            <h3>{{ stats.judge_accounts }}</h3>
+            <p>Judge Accounts</p>
           </div>
         </div>
       </div>

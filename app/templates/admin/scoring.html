@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="content-section">
+  <div class="container">
+    <h2>Scoring Control</h2>
+    <form class="filter-grid" method="get">
+      <div>
+        <label class="form-label">Event</label>
+        <select class="form-select" name="event_id">
+          {% for item in events %}
+          <option value="{{ item.id }}" {% if item.id == event.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Competition</label>
+        <select class="form-select" name="competition_id">
+          {% for item in competitions %}
+          <option value="{{ item.id }}" {% if competition and item.id == competition.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="align-self-end d-flex gap-2">
+        <button class="btn btn-accent" type="submit">View Live Scores</button>
+      </div>
+    </form>
+
+    {% if not has_scores %}
+    <div class="card-panel">
+      <p class="mb-0">Waiting for judges to submit scores.</p>
+    </div>
+    {% endif %}
+
+    {% if judge_breakdown %}
+    <div class="mt-4">
+      <h4>Live Judge Breakdown</h4>
+      {% for block in judge_breakdown %}
+      <div class="card-panel">
+        <h5>{{ block.judge.name }}</h5>
+        <table class="table table-dark table-striped">
+          <thead>
+            <tr>
+              <th>Contestant</th>
+              {% for item in criteria_items %}
+              <th>{{ item.name }}</th>
+              {% endfor %}
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in block.rows %}
+            <tr>
+              <td>{{ row.contestant }}</td>
+              {% for item in criteria_items %}
+              <td>
+                {% set raw_score = row.criteria_scores.get(item.id) %}
+                {{ "%.4f"|format(raw_score) if raw_score is not none else "-" }}
+              </td>
+              {% endfor %}
+              <td>{{ "%.4f"|format(row.total) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="content-section">
+  <div class="container">
+    <div class="judge-breadcrumb">Judging / {{ competition.name }}</div>
+    <div class="judge-header">
+      <div>
+        <h2>Judge Scoring</h2>
+        <p class="judge-subtext">Criteria are active. Please score all criteria for each contestant.</p>
+      </div>
+    </div>
+
+    {% if not criteria_items or not contestants %}
+    <div class="alert alert-warning">Please ensure contestants and criteria are configured for this competition.</div>
+    {% else %}
+    <div class="alert alert-success">Criteria are active. Please score all criteria for the contestant.</div>
+    <div class="judge-card-grid">
+      {% for contestant in contestants %}
+      {% set is_scored = contestant.id in scored_contestants %}
+      <div class="judge-contestant-card">
+        <div class="judge-card-header">
+          <h5>{{ contestant.name }}</h5>
+          <span class="status-badge {{ 'status-complete' if is_scored else 'status-pending' }}">
+            {{ 'Completed' if is_scored else 'Pending' }}
+          </span>
+        </div>
+        <button
+          class="btn btn-accent w-100 score-btn {{ 'score-btn-disabled' if is_scored else '' }}"
+          type="button"
+          data-bs-toggle="modal"
+          data-bs-target="#scoreModal-{{ contestant.id }}"
+          {% if is_scored %}disabled{% endif %}
+        >
+          <i class="fa-solid fa-pen-to-square"></i>
+          Score
+        </button>
+      </div>
+
+      <div class="modal fade" id="scoreModal-{{ contestant.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Score {{ contestant.name }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+              <div class="modal-body">
+                {{ score_form.csrf_token }}
+                {{ score_form.contestant_id(value=contestant.id, id="contestant_id_" ~ contestant.id) }}
+                {% for item in criteria_items %}
+                <div class="mb-3">
+                  <label class="form-label" for="criteria_{{ item.id }}_{{ contestant.id }}">
+                    {{ item.name }} ({{ "%.0f"|format(item.weight) }}%) (max {{ item.max_score }})
+                  </label>
+                  {{ score_form['criteria_' ~ item.id](
+                    class="form-control",
+                    id="criteria_" ~ item.id ~ "_" ~ contestant.id,
+                    type="number",
+                    inputmode="decimal",
+                    min="0",
+                    max=item.max_score,
+                    step="0.01"
+                  ) }}
+                </div>
+                {% endfor %}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                {{ score_form.submit(class="btn btn-accent") }}
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+      <a class="btn btn-outline-secondary" href="{{ url_for('judge.portal') }}">
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to Portal
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}

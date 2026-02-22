@@ -7,7 +7,7 @@ from wtforms.validators import DataRequired, NumberRange
 
 from . import tabulator_bp
 from ..extensions import db
-from ..models import Competition, Contestant, Criteria, Event, Judge, Score
+from ..models import Competition, Contestant, Criteria, Event, Judge, Score, judge_competitions
 from ..utils.decorators import role_required
 
 
@@ -19,6 +19,21 @@ def _get_active_event():
     db.session.add(event)
     db.session.commit()
     return event
+
+
+def _competition_judges_query(competition_id):
+    return (
+        Judge.query.outerjoin(
+            judge_competitions,
+            Judge.id == judge_competitions.c.judge_id,
+        )
+        .filter(
+            (Judge.competition_id == competition_id)
+            | (judge_competitions.c.competition_id == competition_id)
+        )
+        .distinct()
+        .order_by(Judge.name)
+    )
 
 
 @tabulator_bp.route("/")
@@ -39,7 +54,7 @@ def score_entry(competition_id):
         flash("You are not assigned to this competition portal.", "warning")
         return redirect(url_for("tabulator.portal"))
     competition = Competition.query.get_or_404(competition_id)
-    judges = Judge.query.filter_by(competition_id=competition_id).order_by(Judge.name).all()
+    judges = _competition_judges_query(competition_id).all()
     contestants = (
         Contestant.query.filter_by(competition_id=competition_id)
         .order_by(Contestant.name)

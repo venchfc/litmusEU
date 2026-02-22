@@ -5,6 +5,18 @@ from flask_login import UserMixin
 from .extensions import bcrypt, db, login_manager
 
 
+judge_competitions = db.Table(
+    "judge_competitions",
+    db.Column("judge_id", db.Integer, db.ForeignKey("judge.id"), primary_key=True),
+    db.Column(
+        "competition_id",
+        db.Integer,
+        db.ForeignKey("competition.id"),
+        primary_key=True,
+    ),
+)
+
+
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
@@ -17,7 +29,11 @@ class Competition(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     slug = db.Column(db.String(120), unique=True, nullable=False)
-    judges = db.relationship("Judge", backref="competition", cascade="all, delete-orphan")
+    judges = db.relationship(
+        "Judge",
+        secondary=judge_competitions,
+        back_populates="competitions",
+    )
     contestants = db.relationship(
         "Contestant", backref="competition", cascade="all, delete-orphan"
     )
@@ -28,6 +44,11 @@ class Judge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     competition_id = db.Column(db.Integer, db.ForeignKey("competition.id"), nullable=False)
+    competitions = db.relationship(
+        "Competition",
+        secondary=judge_competitions,
+        back_populates="judges",
+    )
 
 
 class Contestant(db.Model):
@@ -51,8 +72,10 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), nullable=False)
     is_primary = db.Column(db.Boolean, default=False, nullable=False)
     competition_id = db.Column(db.Integer, db.ForeignKey("competition.id"))
+    judge_id = db.Column(db.Integer, db.ForeignKey("judge.id"))
 
     competition = db.relationship("Competition", backref="tabulators")
+    judge = db.relationship("Judge", backref="user_account", foreign_keys=[judge_id])
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")

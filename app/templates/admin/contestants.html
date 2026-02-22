@@ -1,45 +1,29 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="content-section">
+<section class="content-section manage-section">
   <div class="container">
-    <h2>Manage Contestants</h2>
-    <div class="split-grid">
-      <div class="card-panel">
-        <form method="post">
-          {{ form.hidden_tag() }}
-          <div class="mb-3">
-            {{ form.name.label(class="form-label") }}
-            {{ form.name(class="form-control") }}
-          </div>
-          <div class="mb-3">
-            {{ form.competition_id.label(class="form-label") }}
-            {{ form.competition_id(class="form-select") }}
-          </div>
-          {{ form.submit(class="btn btn-accent") }}
-        </form>
+    <div class="section-heading">
+      <h2>Manage Contestants</h2>
+    </div>
+    <div class="manage-card">
+      <div class="manage-card-header">
+        <h5>Select Competition</h5>
       </div>
-      <div class="card-panel">
-        <form class="mb-3" method="get">
-          <label class="form-label">Filter by Competition</label>
-          <select class="form-select" name="competition_id" onchange="this.form.submit()">
-            {% for competition in competitions %}
-            <option value="{{ competition.id }}" {% if competition.id == selected_competition %}selected{% endif %}>
-              {{ competition.name }}
-            </option>
-            {% endfor %}
-          </select>
-        </form>
-        <ul class="list-group list-group-flush">
-          {% for contestant in contestants %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ contestant.name }}</span>
-            <form method="post" action="{{ url_for('admin.delete_contestant', contestant_id=contestant.id) }}">
-              <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
-            </form>
-          </li>
-          {% endfor %}
-        </ul>
+      <div class="manage-list">
+        {% for competition in competitions %}
+        <div class="manage-row">
+          <div class="manage-row-title">{{ competition.name }}</div>
+          <div class="manage-actions">
+            <a class="btn btn-sm btn-manage" href="{{ url_for('admin.manage_contestants', competition_id=competition.id) }}">
+              <i class="fa-solid fa-user-group"></i>
+              Manage Contestants
+            </a>
+          </div>
+        </div>
+        {% else %}
+        <div class="manage-empty">No competitions yet.</div>
+        {% endfor %}
       </div>
     </div>
   </div>

@@ -17,13 +17,13 @@ def create_app():
 
     from .auth.routes import auth_bp
     from .admin.routes import admin_bp
-    from .tabulator.routes import tabulator_bp
+    from .judge.routes import judge_bp
     from .main.routes import main_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix="/admin")
-    app.register_blueprint(tabulator_bp, url_prefix="/tabulator")
+    app.register_blueprint(judge_bp, url_prefix="/judge")
 
     with app.app_context():
         db.create_all()

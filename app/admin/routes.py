@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from sqlalchemy import func
+
 from flask import Response, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
@@ -10,11 +12,22 @@ from .forms import (
     CompetitionForm,
     ContestantForm,
     CriteriaForm,
+    EventTitleForm,
     JudgeForm,
+    JudgeAssignForm,
     ResetDatabaseForm,
 )
 from ..extensions import db
-from ..models import Competition, Contestant, Criteria, Event, Judge, Score, User
+from ..models import (
+    Competition,
+    Contestant,
+    Criteria,
+    Event,
+    Judge,
+    Score,
+    User,
+    judge_competitions,
+)
 from ..utils.decorators import role_required
 from ..utils.pdf import render_results_pdf
 
@@ -29,6 +42,20 @@ def _get_active_event():
     return event
 
 
+def _competition_judges_query(competition_id):
+    return (
+        Judge.query.outerjoin(
+            judge_competitions,
+            Judge.id == judge_competitions.c.judge_id,
+        )
+        .filter(
+            (Judge.competition_id == competition_id)
+            | (judge_competitions.c.competition_id == competition_id)
+        )
+        .distinct()
+        .order_by(Judge.name)
+    )
+
 @admin_bp.route("/")
 @login_required
 @role_required("admin")
@@ -39,7 +66,7 @@ def dashboard():
         "judges": Judge.query.count(),
         "contestants": Contestant.query.count(),
         "criteria": Criteria.query.count(),
-        "tabulators": User.query.filter_by(role="tabulator").count(),
+        "judge_accounts": User.query.filter_by(role="judge").count(),
     }
     return render_template("admin/dashboard.html", stats=stats, active_event=active_event)
 
@@ -60,8 +87,32 @@ def competitions():
         return redirect(url_for("admin.competitions"))
 
     competitions_list = Competition.query.order_by(Competition.name).all()
+    active_event = _get_active_event()
+    competition_status = {}
+    for competition in competitions_list:
+        judge_count = _competition_judges_query(competition.id).count()
+        contestant_count = Contestant.query.filter_by(competition_id=competition.id).count()
+        criteria_count = Criteria.query.filter_by(competition_id=competition.id).count()
+        expected_scores = judge_count * contestant_count * criteria_count
+        if expected_scores == 0:
+            competition_status[competition.id] = False
+            continue
+
+        score_count = (
+            Score.query.filter_by(
+                event_id=active_event.id,
+                competition_id=competition.id,
+            )
+            .with_entities(func.count(Score.id))
+            .scalar()
+        )
+        competition_status[competition.id] = score_count >= expected_scores
+
     return render_template(
-        "admin/competitions.html", competitions=competitions_list, form=form
+        "admin/competitions.html",
+        competitions=competitions_list,
+        competition_status=competition_status,
+        form=form,
     )
 
 
@@ -80,33 +131,83 @@ def delete_competition(competition_id):
 @login_required
 @role_required("admin")
 def judges():
-    form = JudgeForm()
     competitions_list = Competition.query.order_by(Competition.name).all()
-    form.competition_id.choices = [(c.id, c.name) for c in competitions_list]
-
-    if form.validate_on_submit():
-        db.session.add(
-            Judge(name=form.name.data.strip(), competition_id=form.competition_id.data)
-        )
-        db.session.commit()
-        flash("Judge added.", "success")
-        return redirect(url_for("admin.judges", competition_id=form.competition_id.data))
-
-    competition_id = request.args.get("competition_id", type=int)
-    if not competition_id and competitions_list:
-        competition_id = competitions_list[0].id
-
-    judges_list = (
-        Judge.query.filter_by(competition_id=competition_id).order_by(Judge.name).all()
-        if competition_id
-        else []
-    )
     return render_template(
         "admin/judges.html",
-        form=form,
         competitions=competitions_list,
-        judges=judges_list,
-        selected_competition=competition_id,
+    )
+
+
+@admin_bp.route("/judges/manage/<int:competition_id>", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def manage_judges(competition_id):
+    competition = Competition.query.get_or_404(competition_id)
+    judge_form = JudgeForm(prefix="new")
+    assign_form = JudgeAssignForm(prefix="assign")
+    judge_form.competition_id.choices = [(competition.id, competition.name)]
+    judge_form.competition_id.data = competition.id
+
+    assigned_judges = _competition_judges_query(competition.id).all()
+    assigned_judge_ids = {judge.id for judge in assigned_judges}
+    available_judges = Judge.query.order_by(Judge.name).all()
+    assign_form.judge_id.choices = [
+        (judge.id, judge.name)
+        for judge in available_judges
+        if judge.id not in assigned_judge_ids
+    ]
+
+    if "new-submit" in request.form and judge_form.validate_on_submit():
+        username = judge_form.username.data.strip()
+        if User.query.filter_by(username=username).first():
+            flash("Username already exists.", "warning")
+            return redirect(url_for("admin.manage_judges", competition_id=competition.id))
+
+        judge = Judge(name=judge_form.name.data.strip(), competition_id=competition.id)
+        db.session.add(judge)
+        db.session.flush()
+        if competition not in judge.competitions:
+            judge.competitions.append(competition)
+
+        user = User(
+            username=username,
+            role="judge",
+            competition_id=None,
+            judge_id=judge.id,
+            is_primary=False,
+        )
+        user.set_password(judge_form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash("Judge account created.", "success")
+        return redirect(url_for("admin.manage_judges", competition_id=competition.id))
+
+    if "assign-submit" in request.form and assign_form.validate_on_submit():
+        judge = Judge.query.get_or_404(assign_form.judge_id.data)
+        if judge.id in assigned_judge_ids:
+            flash("Judge already assigned to this competition.", "warning")
+            return redirect(url_for("admin.manage_judges", competition_id=competition.id))
+        judge.competitions.append(competition)
+        db.session.commit()
+        flash("Judge assigned to competition.", "success")
+        return redirect(url_for("admin.manage_judges", competition_id=competition.id))
+
+    judge_users = {}
+    if assigned_judge_ids:
+        judge_users = {
+            user.judge_id: user
+            for user in User.query.filter_by(role="judge")
+            .filter(User.judge_id.in_(assigned_judge_ids))
+            .all()
+            if user.judge_id
+        }
+    return render_template(
+        "admin/judges_manage.html",
+        form=judge_form,
+        assign_form=assign_form,
+        competition=competition,
+        judges=assigned_judges,
+        judge_users=judge_users,
     )
 
 
@@ -115,49 +216,84 @@ def judges():
 @role_required("admin")
 def delete_judge(judge_id):
     judge = Judge.query.get_or_404(judge_id)
+    competition_id = request.form.get("competition_id", type=int)
+    assigned_competitions = {competition.id for competition in judge.competitions}
+    if judge.competition_id:
+        assigned_competitions.add(judge.competition_id)
+
+    if competition_id and competition_id in assigned_competitions:
+        if judge.competition_id == competition_id:
+            remaining = [cid for cid in assigned_competitions if cid != competition_id]
+            if remaining:
+                judge.competition_id = remaining[0]
+            else:
+                Score.query.filter_by(judge_id=judge.id).delete(synchronize_session=False)
+                User.query.filter_by(judge_id=judge.id).delete(synchronize_session=False)
+                db.session.delete(judge)
+                db.session.commit()
+                flash("Judge deleted.", "success")
+                return redirect(url_for("admin.manage_judges", competition_id=competition_id))
+
+        db.session.execute(
+            judge_competitions.delete().where(
+                (judge_competitions.c.judge_id == judge.id)
+                & (judge_competitions.c.competition_id == competition_id)
+            )
+        )
+        db.session.commit()
+        flash("Judge removed from competition.", "success")
+        return redirect(url_for("admin.manage_judges", competition_id=competition_id))
+
+    Score.query.filter_by(judge_id=judge.id).delete(synchronize_session=False)
+    User.query.filter_by(judge_id=judge.id).delete(synchronize_session=False)
     db.session.delete(judge)
     db.session.commit()
     flash("Judge deleted.", "success")
-    return redirect(url_for("admin.judges", competition_id=judge.competition_id))
+    return redirect(url_for("admin.judges"))
 
 
 @admin_bp.route("/contestants", methods=["GET", "POST"])
 @login_required
 @role_required("admin")
 def contestants():
-    form = ContestantForm()
     competitions_list = Competition.query.order_by(Competition.name).all()
-    form.competition_id.choices = [(c.id, c.name) for c in competitions_list]
+    return render_template(
+        "admin/contestants.html",
+        competitions=competitions_list,
+    )
+
+
+@admin_bp.route("/contestants/manage/<int:competition_id>", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def manage_contestants(competition_id):
+    competition = Competition.query.get_or_404(competition_id)
+    form = ContestantForm()
+    form.competition_id.choices = [(competition.id, competition.name)]
+    form.competition_id.data = competition.id
 
     if form.validate_on_submit():
         db.session.add(
             Contestant(
-                name=form.name.data.strip(), competition_id=form.competition_id.data
+                name=form.name.data.strip(), competition_id=competition.id
             )
         )
         db.session.commit()
         flash("Contestant added.", "success")
         return redirect(
-            url_for("admin.contestants", competition_id=form.competition_id.data)
+            url_for("admin.manage_contestants", competition_id=competition.id)
         )
 
-    competition_id = request.args.get("competition_id", type=int)
-    if not competition_id and competitions_list:
-        competition_id = competitions_list[0].id
-
     contestants_list = (
-        Contestant.query.filter_by(competition_id=competition_id)
+        Contestant.query.filter_by(competition_id=competition.id)
         .order_by(Contestant.name)
         .all()
-        if competition_id
-        else []
     )
     return render_template(
-        "admin/contestants.html",
+        "admin/contestants_manage.html",
         form=form,
-        competitions=competitions_list,
+        competition=competition,
         contestants=contestants_list,
-        selected_competition=competition_id,
     )
 
 
@@ -169,7 +305,7 @@ def delete_contestant(contestant_id):
     db.session.delete(contestant)
     db.session.commit()
     flash("Contestant deleted.", "success")
-    return redirect(url_for("admin.contestants", competition_id=contestant.competition_id))
+    return redirect(url_for("admin.manage_contestants", competition_id=contestant.competition_id))
 
 
 @admin_bp.route("/criteria", methods=["GET", "POST"])
@@ -178,7 +314,14 @@ def delete_contestant(contestant_id):
 def criteria():
     form = CriteriaForm()
     competitions_list = Competition.query.order_by(Competition.name).all()
-    form.competition_id.choices = [(c.id, c.name) for c in competitions_list]
+    competition_id = request.args.get("competition_id", type=int)
+    if not competition_id and competitions_list:
+        competition_id = competitions_list[0].id
+
+    competition = Competition.query.get(competition_id) if competition_id else None
+    if competition:
+        form.competition_id.choices = [(competition.id, competition.name)]
+        form.competition_id.data = competition.id
 
     if form.validate_on_submit():
         existing_total = (
@@ -201,10 +344,6 @@ def criteria():
         flash("Criteria added.", "success")
         return redirect(url_for("admin.criteria", competition_id=form.competition_id.data))
 
-    competition_id = request.args.get("competition_id", type=int)
-    if not competition_id and competitions_list:
-        competition_id = competitions_list[0].id
-
     criteria_list = (
         Criteria.query.filter_by(competition_id=competition_id).order_by(Criteria.name).all()
         if competition_id
@@ -220,7 +359,7 @@ def criteria():
     return render_template(
         "admin/criteria.html",
         form=form,
-        competitions=competitions_list,
+        competition=competition,
         criteria=criteria_list,
         selected_competition=competition_id,
         current_weight_total=current_weight_total,
@@ -243,8 +382,6 @@ def delete_criteria(criteria_id):
 @role_required("admin")
 def accounts():
     form = AccountForm()
-    competitions_list = Competition.query.order_by(Competition.name).all()
-    form.competition_id.choices = [(c.id, c.name) for c in competitions_list]
     if form.validate_on_submit():
         if User.query.filter_by(username=form.username.data.strip()).first():
             flash("Username already exists.", "warning")
@@ -254,25 +391,18 @@ def accounts():
                 role=form.role.data,
                 is_primary=False,
             )
-            if form.role.data == "tabulator":
-                user.competition_id = form.competition_id.data
-                if not user.competition_id:
-                    flash("Select a competition for tabulator accounts.", "warning")
-                    return redirect(url_for("admin.accounts"))
-            else:
-                user.competition_id = None
+            user.competition_id = None
             user.set_password(form.password.data)
             db.session.add(user)
             db.session.commit()
             flash("Account created.", "success")
         return redirect(url_for("admin.accounts"))
 
-    users = User.query.order_by(User.username).all()
+    users = User.query.filter_by(role="admin").order_by(User.username).all()
     return render_template(
         "admin/accounts.html",
         form=form,
         users=users,
-        competitions=competitions_list,
     )
 
 
@@ -327,11 +457,45 @@ def results():
     competition = Competition.query.get(competition_id) if competition_id else None
     criteria_items = []
     results_rows = []
-    judge_breakdown = []
     if competition:
         criteria_items = Criteria.query.filter_by(competition_id=competition.id).order_by(Criteria.name).all()
         results_rows = _calculate_results(event.id, competition.id)
-        judges = Judge.query.filter_by(competition_id=competition.id).order_by(Judge.name).all()
+
+    events = Event.query.filter_by(status="active").order_by(Event.created_at.desc()).all()
+    return render_template(
+        "admin/results.html",
+        competitions=competitions_list,
+        events=events,
+        event=event,
+        competition=competition,
+        results=results_rows,
+        criteria_items=criteria_items,
+    )
+
+
+@admin_bp.route("/scoring")
+@login_required
+@role_required("admin")
+def scoring():
+    competitions_list = Competition.query.order_by(Competition.name).all()
+    event_id = request.args.get("event_id", type=int)
+    if event_id:
+        event = Event.query.get_or_404(event_id)
+    else:
+        event = _get_active_event()
+
+    competition_id = request.args.get("competition_id", type=int)
+    if not competition_id and competitions_list:
+        competition_id = competitions_list[0].id
+
+    competition = Competition.query.get(competition_id) if competition_id else None
+    criteria_items = []
+    judge_breakdown = []
+    has_scores = False
+
+    if competition:
+        criteria_items = Criteria.query.filter_by(competition_id=competition.id).order_by(Criteria.name).all()
+        judges = _competition_judges_query(competition.id).all()
         contestants = (
             Contestant.query.filter_by(competition_id=competition.id)
             .order_by(Contestant.name)
@@ -342,11 +506,16 @@ def results():
             competition_id=competition.id,
         ).all()
 
+        has_scores = len(scores) > 0
         score_lookup = {}
+        judge_ids_with_scores = set()
         for score in scores:
             score_lookup[(score.judge_id, score.contestant_id, score.criteria_id)] = score.score
+            judge_ids_with_scores.add(score.judge_id)
 
         for judge in judges:
+            if judge.id not in judge_ids_with_scores:
+                continue
             rows = []
             for contestant in contestants:
                 criteria_scores = {}
@@ -369,16 +538,16 @@ def results():
                 )
             judge_breakdown.append({"judge": judge, "rows": rows})
 
-    events = Event.query.order_by(Event.created_at.desc()).all()
+    events = Event.query.filter_by(status="active").order_by(Event.created_at.desc()).all()
     return render_template(
-        "admin/results.html",
+        "admin/scoring.html",
         competitions=competitions_list,
         events=events,
         event=event,
         competition=competition,
-        results=results_rows,
         criteria_items=criteria_items,
         judge_breakdown=judge_breakdown,
+        has_scores=has_scores,
     )
 
 
@@ -406,35 +575,20 @@ def results_pdf():
 @login_required
 @role_required("admin")
 def history():
-    events = Event.query.order_by(Event.created_at.desc()).all()
+    events = Event.query.filter_by(status="completed").order_by(Event.created_at.desc()).all()
     competitions = Competition.query.order_by(Competition.name).all()
 
-    completed_competitions = []
-    for event in events:
-        for competition in competitions:
-            judges_count = Judge.query.filter_by(competition_id=competition.id).count()
-            contestants_count = Contestant.query.filter_by(competition_id=competition.id).count()
-            criteria_count = Criteria.query.filter_by(competition_id=competition.id).count()
-            expected_scores = judges_count * contestants_count * criteria_count
-            if expected_scores == 0:
-                continue
-            locked_scores = Score.query.filter_by(
-                event_id=event.id,
-                competition_id=competition.id,
-                locked=True,
-            ).count()
-            if locked_scores == expected_scores:
-                completed_competitions.append(
-                    {
-                        "event": event,
-                        "competition": competition,
-                        "expected_scores": expected_scores,
-                    }
-                )
+    event_groups = [
+        {
+            "event": event,
+            "competitions": competitions,
+        }
+        for event in events
+    ]
 
     return render_template(
         "admin/history.html",
-        completed_competitions=completed_competitions,
+        event_groups=event_groups,
     )
 
 
@@ -444,6 +598,10 @@ def history():
 def settings():
     reset_form = ResetDatabaseForm(prefix="reset")
     password_form = ChangePasswordForm(prefix="pw")
+    event_form = EventTitleForm(prefix="event")
+    active_event = _get_active_event()
+    if request.method == "GET" and active_event:
+        event_form.name.data = active_event.name
 
     if request.method == "POST":
         if "reset-reset_submit" in request.form:
@@ -479,11 +637,19 @@ def settings():
                 db.session.commit()
                 flash("Password updated successfully.", "success")
                 return redirect(url_for("admin.settings"))
+        elif "event-submit" in request.form:
+            if event_form.validate_on_submit():
+                active_event.name = event_form.name.data.strip()
+                db.session.commit()
+                flash("Event title updated.", "success")
+                return redirect(url_for("admin.settings"))
 
     return render_template(
         "admin/settings.html",
         reset_form=reset_form,
         password_form=password_form,
+        event_form=event_form,
+        active_event=active_event,
     )
 
 
@@ -500,8 +666,72 @@ def close_event():
     db.session.add(new_event)
     db.session.commit()
 
-    flash("Event closed and archived. New event started.", "success")
+    flash("Event closed and archived. New event started and setup cleared.", "success")
     return redirect(url_for("admin.history"))
+
+
+def _build_judge_breakdown(event_id, competition_id, criteria_items):
+    judges = _competition_judges_query(competition_id).all()
+    contestants = (
+        Contestant.query.filter_by(competition_id=competition_id)
+        .order_by(Contestant.name)
+        .all()
+    )
+    scores = Score.query.filter_by(
+        event_id=event_id,
+        competition_id=competition_id,
+    ).all()
+
+    score_lookup = {}
+    for score in scores:
+        score_lookup[(score.judge_id, score.contestant_id, score.criteria_id)] = score.score
+
+    judge_breakdown = []
+    for judge in judges:
+        rows = []
+        for contestant in contestants:
+            criteria_scores = {}
+            total_weighted = 0.0
+            for criteria_item in criteria_items:
+                raw_score = score_lookup.get(
+                    (judge.id, contestant.id, criteria_item.id)
+                )
+                criteria_scores[criteria_item.id] = raw_score
+                if raw_score is not None and criteria_item.max_score:
+                    total_weighted += (
+                        raw_score / criteria_item.max_score
+                    ) * criteria_item.weight
+            rows.append(
+                {
+                    "contestant": contestant.name,
+                    "criteria_scores": criteria_scores,
+                    "total": min(total_weighted, 100.0),
+                }
+            )
+        judge_breakdown.append({"judge": judge, "rows": rows})
+    return judge_breakdown
+
+
+@admin_bp.route("/history/results")
+@login_required
+@role_required("admin")
+def history_results():
+    event_id = request.args.get("event_id", type=int)
+    competition_id = request.args.get("competition_id", type=int)
+    event = Event.query.get_or_404(event_id)
+    competition = Competition.query.get_or_404(competition_id)
+    criteria_items = Criteria.query.filter_by(competition_id=competition.id).order_by(Criteria.name).all()
+    results_rows = _calculate_results(event.id, competition.id)
+    judge_breakdown = _build_judge_breakdown(event.id, competition.id, criteria_items)
+
+    return render_template(
+        "admin/history_results.html",
+        event=event,
+        competition=competition,
+        results=results_rows,
+        criteria_items=criteria_items,
+        judge_breakdown=judge_breakdown,
+    )
 
 
 def _calculate_results(event_id, competition_id):

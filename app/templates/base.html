@@ -15,14 +15,14 @@
   <header class="site-header">
     <nav class="navbar navbar-expand-lg navbar-dark">
       <div class="container">
-        <a class="navbar-brand" href="{% if current_user.is_authenticated and current_user.role == 'admin' %}{{ url_for('admin.dashboard') }}{% elif current_user.is_authenticated and current_user.role == 'tabulator' %}{{ url_for('tabulator.portal') }}{% else %}{{ url_for('main.home') }}{% endif %}">LITMUS</a>
+        <a class="navbar-brand" href="{% if current_user.is_authenticated and current_user.role == 'admin' %}{{ url_for('admin.dashboard') }}{% elif current_user.is_authenticated and current_user.role == 'judge' %}{{ url_for('judge.portal') }}{% else %}{{ url_for('main.home') }}{% endif %}">LITMUS</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#litmusNav">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="litmusNav">
           <ul class="navbar-nav ms-auto align-items-lg-center">
             <li class="nav-item">
-              <a class="nav-link" href="{% if current_user.is_authenticated and current_user.role == 'admin' %}{{ url_for('admin.dashboard') }}{% elif current_user.is_authenticated and current_user.role == 'tabulator' %}{{ url_for('tabulator.portal') }}{% else %}{{ url_for('main.home') }}{% endif %}">Home</a>
+              <a class="nav-link" href="{% if current_user.is_authenticated and current_user.role == 'admin' %}{{ url_for('admin.dashboard') }}{% elif current_user.is_authenticated and current_user.role == 'judge' %}{{ url_for('judge.portal') }}{% else %}{{ url_for('main.home') }}{% endif %}">Home</a>
             </li>
             {% if current_user.is_authenticated and current_user.role == 'admin' %}
             <li class="nav-item dropdown">
@@ -33,9 +33,12 @@
                 <li><a class="dropdown-item" href="{{ url_for('admin.competitions') }}">Competitions</a></li>
                 <li><a class="dropdown-item" href="{{ url_for('admin.judges') }}">Judges</a></li>
                 <li><a class="dropdown-item" href="{{ url_for('admin.contestants') }}">Contestants</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('admin.criteria') }}">Criteria</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('admin.competitions') }}">Criteria</a></li>
                 <li><a class="dropdown-item" href="{{ url_for('admin.accounts') }}">Accounts</a></li>
               </ul>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('admin.scoring') }}">Scoring</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('admin.results') }}">Results</a>

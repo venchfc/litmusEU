@@ -10,9 +10,19 @@ class CompetitionForm(FlaskForm):
 
 
 class JudgeForm(FlaskForm):
-    name = StringField("Judge Name", validators=[DataRequired()])
+    name = StringField("Judge Full Name", validators=[DataRequired()])
+    username = StringField("Judge Username", validators=[DataRequired()])
+    password = PasswordField(
+        "Judge Password",
+        validators=[DataRequired(), Length(min=8)],
+    )
     competition_id = SelectField("Competition", coerce=int)
     submit = SubmitField("Add Judge")
+
+
+class JudgeAssignForm(FlaskForm):
+    judge_id = SelectField("Existing Judge", coerce=int, validators=[DataRequired()])
+    submit = SubmitField("Assign Judge")
 
 
 class ContestantForm(FlaskForm):
@@ -32,8 +42,7 @@ class CriteriaForm(FlaskForm):
 class AccountForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
-    role = SelectField("Role", choices=[("admin", "Admin"), ("tabulator", "Tabulator")])
-    competition_id = SelectField("Competition", coerce=int)
+    role = SelectField("Role", choices=[("admin", "Admin")])
     submit = SubmitField("Create Account")
 
 
@@ -56,3 +65,8 @@ class ChangePasswordForm(FlaskForm):
 class ResetDatabaseForm(FlaskForm):
     password = PasswordField("Confirm Password", validators=[DataRequired()])
     reset_submit = SubmitField("Reset Database")
+
+
+class EventTitleForm(FlaskForm):
+    name = StringField("Event Title", validators=[DataRequired(), Length(max=120)])
+    submit = SubmitField("Update Event")

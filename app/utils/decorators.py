@@ -10,7 +10,11 @@ def role_required(role):
         def wrapper(*args, **kwargs):
             if not current_user.is_authenticated:
                 abort(401)
-            if current_user.role != role:
+            if isinstance(role, (list, tuple, set)):
+                allowed_roles = set(role)
+            else:
+                allowed_roles = {role}
+            if current_user.role not in allowed_roles:
                 abort(403)
             return view_func(*args, **kwargs)
 

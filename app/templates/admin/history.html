@@ -4,21 +4,31 @@
 <section class="content-section">
   <div class="container">
     <h2>Event History</h2>
-    <div class="card-panel">
-      <ul class="list-group list-group-flush">
-        {% for item in completed_competitions %}
+    {% for group in event_groups %}
+    <div class="card-panel mb-4">
+      <div class="dashboard-header">
+        <div>
+          <h5>{{ group.event.name }}</h5>
+          <p class="text-muted mb-0">Event completed</p>
+        </div>
+      </div>
+      <ul class="list-group list-group-flush mt-3">
+        {% for competition in group.competitions %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
           <div>
-            <strong>{{ item.competition.name }}</strong>
-            <p class="mb-0 text-muted">{{ item.event.name }} - Event done</p>
+            <strong>{{ competition.name }}</strong>
           </div>
-          <a class="btn btn-accent btn-sm" href="{{ url_for('admin.results', event_id=item.event.id, competition_id=item.competition.id) }}">View Results</a>
+          <a class="btn btn-accent btn-sm" href="{{ url_for('admin.history_results', event_id=group.event.id, competition_id=competition.id) }}">
+            <i class="fa-solid fa-chart-column"></i>
+            View Results
+          </a>
         </li>
-        {% else %}
-        <li class="list-group-item">No completed competitions yet.</li>
         {% endfor %}
       </ul>
     </div>
+    {% else %}
+    <div class="card-panel">No completed events yet.</div>
+    {% endfor %}
   </div>
 </section>
 {% endblock %}

@@ -12,16 +12,21 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data.strip()).first()
         if user and user.check_password(form.password.data):
-            if user.role == "tabulator" and not user.competition_id:
-                flash("Tabulator account is not assigned to a competition.", "danger")
-                return redirect(url_for("auth.login"))
+            if user.role == "judge":
+                judge = user.judge
+                has_competition = False
+                if judge:
+                    has_competition = bool(judge.competition_id or judge.competitions)
+                if not user.judge_id or not has_competition:
+                    flash("Judge account is not assigned to a competition.", "danger")
+                    return redirect(url_for("auth.login"))
             login_user(user)
             next_url = request.args.get("next")
             if next_url:
                 return redirect(next_url)
             if user.role == "admin":
                 return redirect(url_for("admin.dashboard"))
-            return redirect(url_for("tabulator.portal"))
+            return redirect(url_for("judge.portal"))
         flash("Invalid username or password.", "danger")
     return render_template("auth/login.html", form=form)
 

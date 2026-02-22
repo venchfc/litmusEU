@@ -13,7 +13,7 @@
         <div class="hero-card-inner">
           <h5>Competitions Portal</h5>
           <p>Choose a competition to begin scoring.</p>
-          <a class="btn btn-accent" href="{{ url_for('auth.login') }}">Enter Admin or Tabulator</a>
+          <a class="btn btn-accent" href="{{ url_for('auth.login') }}">Enter Admin or Judge</a>
         </div>
       </div>
     </div>
@@ -29,9 +29,7 @@
         <div class="card-icon"><i class="fa-solid fa-trophy"></i></div>
         <h5>{{ competition.name }}</h5>
         <p>Official portal for {{ competition.name }}.</p>
-        <a class="btn btn-outline-light" href="{{ url_for('tabulator.score_entry', competition_id=competition.id) }}">
-          Open Portal
-        </a>
+        <a class="btn btn-outline-light" href="{{ url_for('auth.login') }}">Login to Score</a>
       </div>
       {% endfor %}
     </div>

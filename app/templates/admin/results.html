@@ -63,41 +63,6 @@
         </tbody>
       </table>
     </div>
-    {% if judge_breakdown %}
-    <div class="mt-4">
-      <h4>Judge Score Breakdown</h4>
-      {% for block in judge_breakdown %}
-      <div class="card-panel">
-        <h5>{{ block.judge.name }}</h5>
-        <table class="table table-dark table-striped">
-          <thead>
-            <tr>
-              <th>Contestant</th>
-              {% for item in criteria_items %}
-              <th>{{ item.name }}</th>
-              {% endfor %}
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in block.rows %}
-            <tr>
-              <td>{{ row.contestant }}</td>
-              {% for item in criteria_items %}
-              <td>
-                {% set raw_score = row.criteria_scores.get(item.id) %}
-                {{ "%.4f"|format(raw_score) if raw_score is not none else "-" }}
-              </td>
-              {% endfor %}
-              <td>{{ "%.4f"|format(row.total) }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
   </div>
 </section>
 {% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="content-section manage-section">
+  <div class="container">
+    <div class="section-heading">
+      <h2>Manage Contestants</h2>
+    </div>
+    <div class="manage-card">
+      <div class="manage-card-header">
+        <div>
+          <h5>Contestants for {{ competition.name }}</h5>
+          <p class="manage-subtext">Add or remove contestants for this competition.</p>
+        </div>
+        <a class="btn btn-sm btn-manage" href="{{ url_for('admin.contestants') }}">
+          <i class="fa-solid fa-arrow-left"></i>
+          Back to competitions
+        </a>
+      </div>
+      <div class="split-grid manage-grid">
+        <div class="manage-card-body">
+          <form method="post">
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="competition_id" value="{{ competition.id }}">
+            <div class="mb-3">
+              {{ form.name.label(class="form-label") }}
+              {{ form.name(class="form-control") }}
+            </div>
+            {{ form.submit(class="btn btn-accent manage-btn") }}
+          </form>
+        </div>
+        <div class="manage-card-body">
+          <div class="manage-list manage-list-tight">
+            {% for contestant in contestants %}
+            <div class="manage-row">
+              <div class="manage-row-title">{{ contestant.name }}</div>
+              <div class="manage-actions">
+                <form method="post" action="{{ url_for('admin.delete_contestant', contestant_id=contestant.id) }}">
+                  <button class="btn btn-outline-danger btn-sm" type="submit">
+                    <i class="fa-solid fa-trash"></i>
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </div>
+            {% else %}
+            <div class="manage-empty">No contestants yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

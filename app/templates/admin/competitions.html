@@ -1,37 +1,63 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="content-section">
+<section class="content-section manage-section">
   <div class="container">
-    <h2>Manage Competitions</h2>
-    <div class="split-grid">
-      <div class="card-panel">
-        <h5>Add Competition</h5>
-        <form method="post">
-          {{ form.hidden_tag() }}
-          <div class="mb-3">
-            {{ form.name.label(class="form-label") }}
-            {{ form.name(class="form-control") }}
-          </div>
-          <div class="mb-3">
-            {{ form.slug.label(class="form-label") }}
-            {{ form.slug(class="form-control") }}
-          </div>
-          {{ form.submit(class="btn btn-accent") }}
-        </form>
+    <div class="section-heading">
+      <h2>Manage Competitions</h2>
+    </div>
+    <div class="split-grid manage-grid">
+      <div class="manage-card">
+        <div class="manage-card-header">
+          <h5>Add Competition</h5>
+        </div>
+        <div class="manage-card-body">
+          <form method="post">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.name.label(class="form-label") }}
+              {{ form.name(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ form.slug.label(class="form-label") }}
+              {{ form.slug(class="form-control") }}
+            </div>
+            {{ form.submit(class="btn btn-accent manage-btn") }}
+          </form>
+        </div>
       </div>
-      <div class="card-panel">
-        <h5>Existing Competitions</h5>
-        <ul class="list-group list-group-flush">
+      <div class="manage-card">
+        <div class="manage-card-header">
+          <h5>Existing Competitions</h5>
+        </div>
+        <div class="manage-list">
           {% for competition in competitions %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ competition.name }}</span>
-            <form method="post" action="{{ url_for('admin.delete_competition', competition_id=competition.id) }}">
-              <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
-            </form>
-          </li>
+          <div class="manage-row">
+            <div class="manage-row-title">
+              {{ competition.name }}
+              {% if competition_status.get(competition.id) %}
+              <span class="status-badge status-complete">Completed</span>
+              {% else %}
+              <span class="status-badge status-pending">Not completed yet</span>
+              {% endif %}
+            </div>
+            <div class="manage-actions">
+              <a class="btn btn-sm btn-manage" href="{{ url_for('admin.criteria', competition_id=competition.id) }}">
+                <i class="fa-solid fa-list-check"></i>
+                Manage Criteria
+              </a>
+              <form method="post" action="{{ url_for('admin.delete_competition', competition_id=competition.id) }}">
+                <button class="btn btn-outline-danger btn-sm" type="submit">
+                  <i class="fa-solid fa-trash"></i>
+                  Delete
+                </button>
+              </form>
+            </div>
+          </div>
+          {% else %}
+          <div class="manage-empty">No competitions yet.</div>
           {% endfor %}
-        </ul>
+        </div>
       </div>
     </div>
   </div>
